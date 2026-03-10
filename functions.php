@@ -74,3 +74,19 @@ function curl_post_request(string $base_url, string $endpoint, string $token, ar
 
     return $data;
 }
+
+function generate_slugs(array $data, string $prefix, string $id_column, string $suffix_column): array
+{
+    foreach ($data as &$item) {
+        $id = $item[$id_column] ?? '';
+        $suffix = $item[$suffix_column] ?? '';
+        $item['slug'] = generate_slug($prefix, $id, $suffix);
+    }
+
+    return $data;
+}
+
+function generate_slug(string $prefix, string $id, string $suffix): string
+{
+    return  $prefix . '-' . $id . '-' . $suffix;
+}
