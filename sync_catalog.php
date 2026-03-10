@@ -6,9 +6,10 @@ $curlConifg = require __DIR__ . '/config/curl.php';
 
 $base_url = $config['api_base_url'];
 $token = $config['api_token'];
+$api_key = $config['api_key'];
 
-$rooms = sync_rooms($base_url, $token, $curlConifg);
-$rate_plans = sync_rate_plans($base_url, $token, $curlConifg);
+$rooms = sync_rooms($base_url, $token, $api_key, $curlConifg);
+$rate_plans = sync_rate_plans($base_url, $token, $api_key, $curlConifg);
 
 // Generate slugs
 $rooms['rooms'] = generate_slugs($rooms['rooms'], 'HS', 'id_rooms', 'name');
