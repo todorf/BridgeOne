@@ -5,13 +5,13 @@
  * @throws JsonException
  * @return array
  */
-function sync_rooms(string $base_url, string $token, array $curlConifg): array
+function sync_rooms(string $base_url, string $token, string $api_key, array $curlConifg): array
 {
     $endpoint = '/api/room/data/available_rooms';
     $data = [
         "token" => $token,
         "id_properties" => "93",
-        "key" => "574eb98879eb28d03b21e8a5c1a21259a9a5c85f",
+        "key" => $api_key,
         "dfrom" => "2025-02-01",
         "dto" => "2025-02-20",
         "id_room_types" => 170,
@@ -26,16 +26,41 @@ function sync_rooms(string $base_url, string $token, array $curlConifg): array
  * @throws JsonException
  * @return array
  */
-function sync_rate_plans(string $base_url, string $token, array $curlConifg): array
+function sync_rate_plans(string $base_url, string $token, string $api_key, array $curlConifg): array
 {
     $endpoint = '/api/pricingPlan/data/pricing_plans';
     $data = [
         "token" => $token,
         "id_properties" => "93",
-        "key" => "574eb98879eb28d03b21e8a5c1a21259a9a5c85f",
+        "key" => $api_key,
     ];
 
     return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);;
+}
+
+function sync_reservations(
+    string $base_url,
+    string $token,
+    string $api_key,
+    array $curlConifg,
+    string $fromDate,
+    string $toDate,
+): array {
+    $endpoint = '/api/reservation/data/reservations';
+    $data = [
+        "token" => $token,
+        "key" => $api_key,
+        "id_properties" => 93,
+        "rooms" => [],
+        'channels' => [],
+        'countries' => [],
+        'order_by' => 'date_received',
+        "dfrom" => $fromDate,
+        "dto" => $toDate,
+        'show_rooms' => 1,
+    ];
+
+    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
 }
 
 /**
@@ -43,8 +68,13 @@ function sync_rate_plans(string $base_url, string $token, array $curlConifg): ar
  * @throws JsonException
  * @return array
  */
-function curl_post_request(string $base_url, string $endpoint, string $token, array $postData, array $curlConifg): array
-{
+function curl_post_request(
+    string $base_url,
+    string $endpoint,
+    string $token,
+    array $postData,
+    array $curlConifg,
+): array {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, $base_url . $endpoint);
@@ -75,12 +105,22 @@ function curl_post_request(string $base_url, string $endpoint, string $token, ar
     return $data;
 }
 
-function generate_slugs(array $data, string $prefix, string $id_column, string $suffix_column): array
-{
+function generate_slugs(
+    array $data,
+    string $prefix,
+    string $id_column,
+    string $suffix_column,
+    string $slug_name = 'slug'
+): array {
     foreach ($data as &$item) {
         $id = $item[$id_column] ?? '';
         $suffix = $item[$suffix_column] ?? '';
-        $item['slug'] = generate_slug($prefix, $id, $suffix);
+
+        if (empty($id) || empty($suffix)) {
+            continue;
+        }
+
+        $item[$slug_name] = generate_slug($prefix, $id, $suffix);
     }
 
     return $data;
@@ -89,4 +129,27 @@ function generate_slugs(array $data, string $prefix, string $id_column, string $
 function generate_slug(string $prefix, string $id, string $suffix): string
 {
     return  $prefix . '-' . $id . '-' . $suffix;
+}
+
+function map_pricing_plans_to_reservations(array $pricing_plans, array $reservations): array
+{
+    $pricing_plans_ids = [];
+
+    foreach ($pricing_plans as $pricing_plan) {
+        $pricing_plans_ids[$pricing_plan['id_pricing_plans']] = $pricing_plan;
+    }
+
+    $reservations = array_filter($reservations, function ($reservation) use ($pricing_plans_ids) {
+        return (
+            !empty($reservation['id_pricing_plans']) &&
+            array_key_exists($reservation['id_pricing_plans'], $pricing_plans_ids)
+        );
+    });
+
+    foreach ($reservations as &$reservation) {
+        $reservation['pricing_plan'][] = $pricing_plans_ids[$reservation['id_pricing_plans']];
+    }
+    unset($reservation);
+
+    return $reservations;
 }
