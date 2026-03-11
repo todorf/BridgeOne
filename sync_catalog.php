@@ -15,9 +15,12 @@ $rate_plans = sync_rate_plans($base_url, $token, $api_key, $curlConifg);
 $rooms['rooms'] = generate_slugs($rooms['rooms'], 'HS', 'id_rooms', 'name');
 $rate_plans = generate_slugs($rate_plans, 'RP', 'id_pricing_plans', 'first_meal');
 
-print_r($rooms);
-print_r($rate_plans);
-
 // Insert data into database
-insert_data('rooms', $rooms['rooms'], true);
-insert_data('rate_plans', $rate_plans, true);
+$mysqli = db_connection();
+insert_data($mysqli, 'rooms', $rooms['rooms'], true);
+insert_data($mysqli, 'rate_plans', $rate_plans, true);
+
+$mysqli->close();
+
+echo "Sync completed successfully";
+exit(0);

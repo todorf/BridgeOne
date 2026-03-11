@@ -2,52 +2,121 @@
 require_once __DIR__ . '/config/database.php';
 
 /**
- * @throws Exception
+ * Validates identifier (table/column name) to prevent SQL injection.
  */
-function execute_query(string $sql): mysqli_result|bool {
-    $mysqli = db_connection();
-    $result = $mysqli->query($sql);
+function validate_identifier(string $name): void
+{
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $name)) {
+        throw new Exception("Invalid identifier: $name");
+    }
+}
 
-    if ($result === false) {
-        throw new Exception("Query error: " . $mysqli->error);
+function normalize_bind_value(mixed $value): mixed
+{
+    if ($value === '' || $value === null) {
+        return 'NULL';
     }
 
-    return $result;
+    if (is_array($value)) {
+        return json_encode($value);
+    }
+
+    if (is_string($value)) {
+        try {
+            $dt = new DateTime($value);
+            return $dt->format('Y-m-d');
+        } catch (Exception $e) {
+            // Not a valid date string, fall through
+        }
+    }
+
+    return $value;
 }
 
 /**
  * @throws Exception
  */
-function insert_data(string $table, array $data, bool $onDuplicateKeyUpdate = false): void {
+function insert_data(
+    mysqli $mysqli,
+    string $table,
+    array $data,
+    bool $onDuplicateKeyUpdate = false
+): void {
     if (empty($data)) {
         throw new Exception("Data is empty");
     }
 
-    $columns = implode(', ', array_keys($data[0]));
+    validate_identifier($table);
 
-    $valuesString = '';
-    foreach ($data as $row) {
-        $escapedValues = implode(', ', array_map(function($value) {
-            return is_numeric($value) ? $value : "'" . $value . "'";
-        }, array_values($row)));
+    $first_key = array_key_first($data);
+    $columnNames = array_keys($data[$first_key]);
 
-        $valuesString .= "(" . $escapedValues . "),";
+    foreach ($columnNames as $col) {
+        validate_identifier($col);
     }
 
-    $valuesString = rtrim($valuesString, ',');
+    $columns = implode(', ', array_map(fn($c) => "`$c`", $columnNames));
+    $placeholdersPerRow = '(' . implode(', ', array_fill(0, count($columnNames), '?')) . ')';
+    $placeholders = implode(', ', array_fill(0, count($data), $placeholdersPerRow));
+
+    $params = [];
+    foreach ($data as $row) {
+        foreach ($columnNames as $col) {
+            $params[] = normalize_bind_value($row[$col] ?? null);
+        }
+    }
+
+    $sql = "INSERT INTO `$table` ($columns) VALUES $placeholders";
 
     if ($onDuplicateKeyUpdate) {
-        $onDuplicateKeyUpdate = ' ON DUPLICATE KEY UPDATE ';
-        foreach (array_keys($data[0]) as $column) {
-            $onDuplicateKeyUpdate .= "`$column`=VALUES(`$column`), ";
+        $updateParts = [];
+        foreach ($columnNames as $col) {
+            $updateParts[] = "`$col`=VALUES(`$col`)";
         }
-
-        $onDuplicateKeyUpdate = rtrim($onDuplicateKeyUpdate, ', ') . ';';
-        $valuesString = rtrim($valuesString, ';');
+        $sql .= ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updateParts);
     }
 
-    $sql = "INSERT INTO `$table` ($columns) VALUES $valuesString" . ($onDuplicateKeyUpdate ? $onDuplicateKeyUpdate : ';');
+    $sql .= ';';
 
-    execute_query($sql);
+    $mysqli->autocommit(FALSE);
+
+    try {
+        $mysqli->begin_transaction();
+        $mysqli->execute_query($sql, $params);
+        $mysqli->commit();
+    } catch (Exception $e) {
+        $mysqli->rollback();
+        throw $e;
+    }
+
+    $mysqli->autocommit(TRUE);
 }
 
+function insert_related_data(mysqli $mysqli, array $data): void
+{
+    if (empty($data)) {
+        throw new Exception("Data is empty");
+    }
+
+    $rooms = [];
+    $pricing_plans = [];
+
+    foreach ($data as $row) {
+        foreach ($row['rooms'] as $room) {
+            $rooms[] = [
+                'id_reservations' => $row['id_reservations'],
+                'id_rooms' => $room['id_rooms'],
+            ];
+        }
+
+        foreach ($row['pricing_plan'] as $pricing_plan) {
+            $pricing_plans[] = [
+                'id_reservations' => $row['id_reservations'],
+                'id_pricing_plans' => $pricing_plan['id_pricing_plans'],
+            ];
+        }
+    }
+
+    insert_data($mysqli, 'reservations_rooms', $rooms, true);
+    insert_data($mysqli, 'reservations_pricing_plans', $pricing_plans, true);
+}

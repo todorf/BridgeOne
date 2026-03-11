@@ -45,8 +45,7 @@ function sync_reservations(
     array $curlConifg,
     string $fromDate,
     string $toDate,
-): array
-{
+): array {
     $endpoint = '/api/reservation/data/reservations';
     $data = [
         "token" => $token,
@@ -75,8 +74,7 @@ function curl_post_request(
     string $token,
     array $postData,
     array $curlConifg,
-): array
-{
+): array {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, $base_url . $endpoint);
@@ -107,12 +105,22 @@ function curl_post_request(
     return $data;
 }
 
-function generate_slugs(array $data, string $prefix, string $id_column, string $suffix_column): array
-{
+function generate_slugs(
+    array $data,
+    string $prefix,
+    string $id_column,
+    string $suffix_column,
+    string $slug_name = 'slug'
+): array {
     foreach ($data as &$item) {
         $id = $item[$id_column] ?? '';
         $suffix = $item[$suffix_column] ?? '';
-        $item['slug'] = generate_slug($prefix, $id, $suffix);
+
+        if (empty($id) || empty($suffix)) {
+            continue;
+        }
+
+        $item[$slug_name] = generate_slug($prefix, $id, $suffix);
     }
 
     return $data;
@@ -132,11 +140,14 @@ function map_pricing_plans_to_reservations(array $pricing_plans, array $reservat
     }
 
     $reservations = array_filter($reservations, function ($reservation) use ($pricing_plans_ids) {
-        return !empty($reservation['id_pricing_plans']) && array_key_exists($reservation['id_pricing_plans'], $pricing_plans_ids);
+        return (
+            !empty($reservation['id_pricing_plans']) &&
+            array_key_exists($reservation['id_pricing_plans'], $pricing_plans_ids)
+        );
     });
 
     foreach ($reservations as &$reservation) {
-        $reservation['pricing_plan'] = $pricing_plans_ids[$reservation['id_pricing_plans']];
+        $reservation['pricing_plan'][] = $pricing_plans_ids[$reservation['id_pricing_plans']];
     }
     unset($reservation);
 
