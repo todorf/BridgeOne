@@ -24,7 +24,7 @@ function normalize_bind_value(mixed $value): mixed
     if (is_string($value)) {
         try {
             $dt = new DateTime($value);
-            return $dt->format('Y-m-d');
+            return $dt->format('Y-m-d H:i:s');
         } catch (Exception $e) {
             // Not a valid date string, fall through
         }
