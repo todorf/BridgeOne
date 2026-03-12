@@ -63,6 +63,24 @@ function sync_reservations(
     return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
 }
 
+function get_reservation(
+    string $base_url,
+    string $token,
+    string $api_key,
+    array $curlConifg,
+    string $reservation_id,
+): array {
+    $endpoint = '/api/reservation/data/reservation';
+    $data = [
+        "token" => $token,
+        "key" => $api_key,
+        "id_properties" => 93,
+        "id_reservations" => $reservation_id,
+    ];
+
+    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
+}
+
 /**
  * @throws Exception
  * @throws JsonException
@@ -79,7 +97,7 @@ function curl_post_request(
 
     curl_setopt($ch, CURLOPT_URL, $base_url . $endpoint);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData, JSON_THROW_ON_ERROR));
     curl_setopt_array($ch, $curlConifg + [
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $token,
@@ -152,4 +170,37 @@ function map_pricing_plans_to_reservations(array $pricing_plans, array $reservat
     unset($reservation);
 
     return $reservations;
+}
+
+function generate_payload_hash(array $data): array
+{
+    foreach ($data as &$item) {
+        if (empty($item)) {
+            continue;
+        }
+
+        try {
+            $item['payload_hash'] = hash('sha256', json_encode($item, JSON_THROW_ON_ERROR));
+        } catch (JsonException $e) {
+            throw new Exception("Error encoding JSON: " . $e->getMessage());
+        }
+    }
+    unset($item);
+
+    return $data;
+}
+
+function is_reservation_modified(array $reservation, array $reservation_db): bool
+{
+    if (
+        empty($reservation['id_reservations']) ||
+        empty($reservation_db['id_reservations'])
+    ) {
+        return false;
+    }
+
+    return (
+        $reservation['id_reservations'] === $reservation_db['id_reservations'] &&
+        $reservation['payload_hash'] !== $reservation_db['payload_hash']
+    );
 }

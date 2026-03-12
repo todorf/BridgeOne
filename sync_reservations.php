@@ -23,6 +23,7 @@ $pricing_plans = sync_rate_plans($base_url, $token, $api_key, $curlConifg);
 // Generate lock_id
 $reservations = generate_slugs($reservations, 'LOCK', 'id_reservations', 'date_arrival', 'lock_id');
 $reservations = map_pricing_plans_to_reservations($pricing_plans, $reservations);
+$reservations = generate_payload_hash($reservations);
 
 // Insert data into database
 $mysqli = db_connection();
