@@ -21,7 +21,7 @@ function normalize_bind_value(mixed $value): mixed
         try {
             return json_encode($value, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
-            throw new Exception("Error encoding JSON: " . $e->getMessage());
+            throw new JsonException("Error encoding JSON: " . $e->getMessage());
         }
     }
 
@@ -96,6 +96,9 @@ function insert_data(
     $mysqli->autocommit(TRUE);
 }
 
+/**
+ * @throws Exception
+ */
 function insert_related_data(mysqli $mysqli, array $data): void
 {
     if (empty($data)) {

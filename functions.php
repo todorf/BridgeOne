@@ -38,6 +38,11 @@ function sync_rate_plans(string $base_url, string $token, string $api_key, array
     return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);;
 }
 
+/**
+ * @throws Exception
+ * @throws JsonException
+ * @return array
+ */
 function sync_reservations(
     string $base_url,
     string $token,
@@ -63,7 +68,12 @@ function sync_reservations(
     return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
 }
 
-function get_reservation(
+/**
+ * @throws Exception
+ * @throws JsonException
+ * @return array
+ */
+function fetch_reservation(
     string $base_url,
     string $token,
     string $api_key,
@@ -115,7 +125,7 @@ function curl_post_request(
     try{
         $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
     } catch (JsonException $e) {
-        throw new Exception('Error:' . $e->getMessage());
+        throw new JsonException('Error:' . $e->getMessage());
     }
 
     curl_close($ch);
@@ -172,6 +182,10 @@ function map_pricing_plans_to_reservations(array $pricing_plans, array $reservat
     return $reservations;
 }
 
+/**
+ * @throws JsonException
+ * @return array
+ */
 function generate_payload_hash(array $data): array
 {
     foreach ($data as &$item) {
@@ -182,7 +196,7 @@ function generate_payload_hash(array $data): array
         try {
             $item['payload_hash'] = hash('sha256', json_encode($item, JSON_THROW_ON_ERROR));
         } catch (JsonException $e) {
-            throw new Exception("Error encoding JSON: " . $e->getMessage());
+            throw new JsonException("Error encoding JSON: " . $e->getMessage());
         }
     }
     unset($item);

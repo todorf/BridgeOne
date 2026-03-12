@@ -17,7 +17,7 @@ if (!$reservation_id) {
     exit(1);
 }
 
-$reservation = get_reservation($base_url, $token, $api_key, $curlConifg, $reservation_id);
+$reservation = fetch_reservation($base_url, $token, $api_key, $curlConifg, $reservation_id);
 if (empty($reservation)) {
     echo "Reservation not fetched\n";
     exit(1);
