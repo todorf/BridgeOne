@@ -55,5 +55,5 @@ if (is_reservation_modified($reservation, $reservation_db)) {
 
 $mysqli->close();
 
-echo "End of script\n";
+echo "Reservation was not modified\n";
 exit(0);
