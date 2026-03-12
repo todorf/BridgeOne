@@ -2,7 +2,7 @@
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/database.php';
 $config = require __DIR__ . '/config/config.php';
-$curlConifg = require __DIR__ . '/config/curl.php';
+$curlConfig = require __DIR__ . '/config/curl.php';
 
 $base_url = $config['api_base_url'];
 $token = $config['api_token'];
@@ -17,8 +17,19 @@ if (!$fromDate || !$toDate) {
     exit(1);
 }
 
-$reservations = sync_reservations($base_url, $token, $api_key, $curlConifg, $fromDate, $toDate);
-$pricing_plans = sync_rate_plans($base_url, $token, $api_key, $curlConifg);
+$result = sync_reservations($base_url, $token, $api_key, $curlConfig, $fromDate, $toDate);
+if (!$result['success']) {
+    echo "Error syncing reservations: " . $result['error'] . "\n";
+    exit(1);
+}
+$reservations = $result['response'];
+
+$result = sync_rate_plans($base_url, $token, $api_key, $curlConfig);
+if (!$result['success']) {
+    echo "Error syncing rate plans: " . $result['error'] . "\n";
+    exit(1);
+}
+$pricing_plans = $result['response'];
 
 // Generate lock_id
 $reservations = generate_slugs($reservations, 'LOCK', 'id_reservations', 'date_arrival', 'lock_id');
