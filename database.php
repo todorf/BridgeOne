@@ -18,7 +18,11 @@ function normalize_bind_value(mixed $value): mixed
     }
 
     if (is_array($value)) {
-        return json_encode($value);
+        try {
+            return json_encode($value, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
+            throw new Exception("Error encoding JSON: " . $e->getMessage());
+        }
     }
 
     if (is_string($value)) {
@@ -119,4 +123,48 @@ function insert_related_data(mysqli $mysqli, array $data): void
 
     insert_data($mysqli, 'reservations_rooms', $rooms, true);
     insert_data($mysqli, 'reservations_pricing_plans', $pricing_plans, true);
+}
+
+function check_if_exists(mysqli $mysqli, string $table, string $column, string $value): bool
+{
+    $sql = "SELECT EXISTS(SELECT 1 FROM `$table` WHERE `$column` = ?)";
+
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $value);
+    $stmt->execute();
+
+    $result = $stmt->get_result();
+    return $result->fetch_row()[0] > 0;
+}
+
+function fetch_rows_by_column (mysqli $mysqli, string $table, string $column, string $value): array
+{
+    $sql = "SELECT * FROM `$table` WHERE `$column` = ?";
+
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('s', $value);
+    $stmt->execute();
+
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
+function log_event(
+    mysqli $mysqli,
+    EventType $event_type,
+    array $event_data,
+    array $old_data = [],
+    array $new_data = []
+): void {
+    $sql = "INSERT INTO audit_log (event_type, event_data, old_data, new_data) VALUES (?, ?, ?, ?)";
+
+    $event_type_value = $event_type->value;
+    $event_data_json = json_encode($event_data);
+    $old_data_json = json_encode($old_data);
+    $new_data_json = json_encode($new_data);
+
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param('ssss', $event_type_value, $event_data_json, $old_data_json, $new_data_json);
+    $stmt->execute();
+
+    $stmt->close();
 }
