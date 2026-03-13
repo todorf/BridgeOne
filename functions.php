@@ -242,15 +242,16 @@ function is_reservation_modified(array $reservation, array $reservation_db): boo
  */
 function generate_invoice_payload(mysqli $mysqli, array $reservation): array
 {
-    $invoice_sequence = get_rows_by_column($mysqli, 'invoice_sequence', 'year', date('Y'), 'last_invoice_number');
+    $year = date('Y');
+    $invoice_sequence = get_rows_by_column($mysqli, 'invoice_sequence', 'year', $year, 'last_invoice_number');
     if (empty($invoice_sequence)) {
-        throw new Exception("Invoice sequence not found for year: " . date('Y'));
+        throw new Exception("Invoice sequence not found for year: " . $year);
     }
 
     $invoice_sequence_number = $invoice_sequence[0]['last_invoice_number'] + 1;
-    update_invoice_sequence($mysqli, date('Y'), $invoice_sequence_number);
+    update_invoice_sequence($mysqli, $year, $invoice_sequence_number);
 
-    $invoice_number = 'HS-INV-' . date('Y') . '-' . str_pad($invoice_sequence_number, 6, '0', STR_PAD_LEFT);
+    $invoice_number = 'HS-INV-' . $year . '-' . str_pad($invoice_sequence_number, 6, '0', STR_PAD_LEFT);
     $line_items = [
         'custom_price' => $reservation['custom_price'],
         'total_price' => $reservation['total_price'],

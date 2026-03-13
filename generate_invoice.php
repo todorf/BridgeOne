@@ -36,12 +36,32 @@ $payload = [
     'payload' => $invoice_payload_json,
 ];
 
-// Try to send invoice first time, then retry 5 times
-for ($i = 0; $i < 6; $i++) {
+$max_attempts = 6;
+$retry_delay_base = 2;
+$attempt_errors = [];
+
+for ($attempt = 1; $attempt <= $max_attempts; $attempt++) {
     $result = curl_post_request($base_url, $api_key, $token, '/api/invoice/send', $payload, $curlConfig);
+
     if ($result['success']) {
-        echo "Invoice sent successfully\n";
+        echo "Invoice sent successfully (Attempt $attempt)\n";
         break;
+    } else {
+        $error_info = [
+            'attempt' => $attempt,
+            'error' => $result['error'] ?? 'Unknown error',
+            'http_status' => $result['http_status'] ?? null,
+            'response' => isset($result['response']) ? substr(json_encode($result['response']), 0, 500) : 'No response'
+        ];
+
+        // This would be logged to error log for easier debugging
+        $attempt_errors[] = $error_info;
+    }
+
+    // Avoid overwhelming the API with requests
+    if ($attempt < $max_attempts) {
+        echo "Sending invoice attempt (Attempt $attempt)\n";
+        sleep((int) $retry_delay_base);
     }
 }
 
