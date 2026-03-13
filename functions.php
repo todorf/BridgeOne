@@ -300,15 +300,19 @@ function handle_event(mysqli $mysqli, WebhookOperations $event_type, array $even
 
 function reservation_insert(mysqli $mysqli, array $event_data): array
 {
-    if (!isset($event_data['id_reservations'])) {
-        return ['error' => 'Reservation ID is required'];
-    }
+    try {
+        if (!isset($event_data['id_reservations'])) {
+            return ['error' => 'Reservation ID is required'];
+        }
 
-    if (check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
-        return ['error' => 'Reservation already exists'];
-    }
+        if (check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
+            return ['error' => 'Reservation already exists'];
+        }
 
-    upsert_data($mysqli, 'reservations', [$event_data]);
+        upsert_data($mysqli, 'reservations', [$event_data]);
+    } catch (Throwable $e) {
+        return ['error' => $e->getMessage()];
+    }
 
     return ['success' => true];
 }
