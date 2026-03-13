@@ -28,8 +28,8 @@ $rate_plans = generate_slugs($rate_plans, 'RP', 'id_pricing_plans', 'first_meal'
 
 // Insert data into database
 $mysqli = db_connection();
-insert_data($mysqli, 'rooms', $rooms['rooms'], true);
-insert_data($mysqli, 'rate_plans', $rate_plans, true);
+upsert_data($mysqli, 'rooms', $rooms['rooms'], true);
+upsert_data($mysqli, 'rate_plans', $rate_plans, true);
 
 $mysqli->close();
 

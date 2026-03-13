@@ -41,17 +41,19 @@ if (empty($reservation_db)) {
 // Compare payload hash
 if (is_reservation_modified($reservation, $reservation_db)) {
     // insert will update the reservation if it exists
-    insert_data($mysqli, 'reservations', [$reservation], true);
+    upsert_data($mysqli, 'reservations', [$reservation], true);
 
     // Log update event
     // TODO: Save only changed fields in old_data and new_data columns in audit_log table
-    log_event($mysqli, EventType::UPDATE, ['reservation_id' => $reservation_id], [], []);
+    log_event($mysqli, EventType::UPDATE, ['reservation_id' => $reservation_id]);
 
     if ($reservation['status'] === 'canceled') {
-        log_event($mysqli, EventType::CANCEL, ['reservation_id' => $reservation_id], [], []);
+        log_event($mysqli, EventType::CANCEL, ['reservation_id' => $reservation_id]);
     }
 
     echo "Reservation updated successfully\n";
+    $mysqli->close();
+    exit(0);
 }
 
 $mysqli->close();
