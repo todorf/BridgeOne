@@ -25,6 +25,8 @@ if (empty($reservation)) {
 }
 
 $invoice_payload = generate_invoice_payload($mysqli, $reservation[0]);
+echo "Invoice payload generated successfully\n";
+
 $invoice_payload_json = json_encode($invoice_payload, JSON_THROW_ON_ERROR);
 $invoice_queue_data = [
     'invoice_number' => $invoice_payload['invoice_number'],
@@ -32,6 +34,8 @@ $invoice_queue_data = [
 ];
 
 upsert_data($mysqli, 'invoice_queue', [$invoice_queue_data]);
+echo "Invoice queued successfully\n";
+
 $payload = [
     'payload' => $invoice_payload_json,
 ];
