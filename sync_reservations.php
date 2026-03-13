@@ -34,7 +34,7 @@ $pricing_plans = $result['response'];
 // Generate lock_id
 $reservations = generate_slugs($reservations, 'LOCK', 'id_reservations', 'date_arrival', 'lock_id');
 $reservations = map_pricing_plans_to_reservations($pricing_plans, $reservations);
-$reservations = generate_payload_hash($reservations);
+$reservations = generate_payload_hashes($reservations);
 
 // Insert data into database
 $mysqli = db_connection();

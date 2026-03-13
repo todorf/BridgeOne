@@ -205,7 +205,7 @@ function map_pricing_plans_to_reservations(array $pricing_plans, array $reservat
  * @throws JsonException
  * @return array
  */
-function generate_payload_hash(array $data): array
+function generate_payload_hashes(array $data): array
 {
     foreach ($data as &$item) {
         if (empty($item)) {
@@ -213,7 +213,7 @@ function generate_payload_hash(array $data): array
         }
 
         try {
-            $item['payload_hash'] = hash('sha256', json_encode($item, JSON_THROW_ON_ERROR));
+            $item['payload_hash'] = generate_single_payload_hash($item);
         } catch (JsonException $e) {
             throw new JsonException("Error encoding JSON: " . $e->getMessage());
         }
@@ -221,6 +221,11 @@ function generate_payload_hash(array $data): array
     unset($item);
 
     return $data;
+}
+
+function generate_single_payload_hash(array $data, string $hash_algo = 'sha256'): string
+{
+    return hash($hash_algo, json_encode($data, JSON_THROW_ON_ERROR));
 }
 
 function is_reservation_modified(array $reservation, array $reservation_db): bool
@@ -283,16 +288,7 @@ function handle_event(mysqli $mysqli, WebhookOperations $event_type, array $even
 {
     switch ($event_type) {
         case WebhookOperations::RESERVATION_INSERT:
-            if (!isset($event_data['id_reservations'])) {
-                return ['error' => 'Reservation ID is required'];
-            }
-
-            if (check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
-                return ['error' => 'Reservation already exists'];
-            }
-
-            upsert_data($mysqli, 'reservations', [$event_data]);
-            return ['success' => true];
+            return reservation_insert($mysqli, $event_data);
         case WebhookOperations::RESERVATION_UPDATE:
             return reservation_update($mysqli, $event_data);
         case WebhookOperations::RESERVATION_CANCEL:
@@ -300,6 +296,21 @@ function handle_event(mysqli $mysqli, WebhookOperations $event_type, array $even
         default:
             return ['error' => 'Invalid event type: ' . $event_type];
     }
+}
+
+function reservation_insert(mysqli $mysqli, array $event_data): array
+{
+    if (!isset($event_data['id_reservations'])) {
+        return ['error' => 'Reservation ID is required'];
+    }
+
+    if (check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
+        return ['error' => 'Reservation already exists'];
+    }
+
+    upsert_data($mysqli, 'reservations', [$event_data]);
+
+    return ['success' => true];
 }
 
 function reservation_update(mysqli $mysqli, array $event_data): array

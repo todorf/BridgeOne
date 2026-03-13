@@ -157,7 +157,8 @@ function log_event(
     EventType|WebhookOperations $event_type,
     array $event_data,
     array $old_data = [],
-    array $new_data = []
+    array $new_data = [],
+    string $payload_hash = ''
 ): void {
     $sql = "INSERT INTO audit_log (event_type, event_data, old_data, new_data, payload_hash) VALUES (?, ?, ?, ?, ?)";
 
@@ -165,7 +166,10 @@ function log_event(
     $event_data_json = !empty($event_data) ? json_encode($event_data, JSON_THROW_ON_ERROR) : null;
     $old_data_json = !empty($old_data) ? json_encode($old_data, JSON_THROW_ON_ERROR) : null;
     $new_data_json = !empty($new_data) ? json_encode($new_data, JSON_THROW_ON_ERROR) : null;
-    $payload_hash = !empty($event_data_json) ? hash('sha256', $event_data_json) : null;
+
+    if (empty($payload_hash)) {
+        $payload_hash = !empty($event_data_json) ? hash('sha256', $event_data_json) : null;
+    }
 
     if (check_if_exists($mysqli, 'audit_log', 'payload_hash', $payload_hash)) {
         return;
