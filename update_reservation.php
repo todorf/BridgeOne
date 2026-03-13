@@ -2,6 +2,7 @@
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/enums/EventType.php';
+require_once __DIR__ . '/logger.php';
 $config = require __DIR__ . '/config/config.php';
 $curlConfig = require __DIR__ . '/config/curl.php';
 
@@ -39,16 +40,23 @@ if (empty($reservation_db)) {
 }
 
 // Compare payload hash
-if (is_reservation_modified($reservation, $reservation_db)) {
+if (true) {
     // insert will update the reservation if it exists
     upsert_data($mysqli, 'reservations', [$reservation], true);
 
     // Log update event
-    // TODO: Save only changed fields in old_data and new_data columns in audit_log table
-    log_event($mysqli, EventType::UPDATE, ['reservation_id' => $reservation_id]);
+    $log_data = ['reservation_id' => $reservation_id];
+    log_event($mysqli, EventType::UPDATE, $log_data);
+    append_event_to_log($config['log_file'], EventType::UPDATE, $log_data, 'Update from the script');
 
     if ($reservation['status'] === 'canceled') {
         log_event($mysqli, EventType::CANCEL, ['reservation_id' => $reservation_id]);
+        append_event_to_log(
+            $config['log_file'],
+            EventType::CANCEL,
+            ['reservation_id' => $reservation_id],
+            "Reservation cancelled"
+        );
     }
 
     echo "Reservation updated successfully\n";

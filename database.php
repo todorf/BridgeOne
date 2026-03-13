@@ -2,6 +2,8 @@
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/enums/EventType.php';
 require_once __DIR__ . '/enums/WebhookOperations.php';
+require_once __DIR__ . '/enums/DatabaseOperations.php';
+require_once __DIR__ . '/logger.php';
 
 /**
  * Validates identifier (table/column name) to prevent SQL injection.
@@ -90,6 +92,17 @@ function upsert_data(
     }
 
     $mysqli->autocommit(TRUE);
+
+    $config = require __DIR__ . '/config/config.php';
+    $log_file = $config['log_file'] ?? '';
+
+    if ($log_file !== "") {
+        $action = $onDuplicateKeyUpdate
+            ? DatabaseOperations::UPDATE
+            : DatabaseOperations::INSERT;
+
+        append_event_to_log($log_file, $action, $data, "Database operation: " . $action->value);
+    }
 }
 
 /**
@@ -178,8 +191,13 @@ function log_event(
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('sssss', $event_type_value, $event_data_json, $old_data_json, $new_data_json, $payload_hash);
     $stmt->execute();
-
     $stmt->close();
+
+    $config = require __DIR__ . '/config/config.php';
+    $log_file = $config['log_file'] ?? '';
+    if ($log_file !== '') {
+        append_event_to_log($log_file, $event_type, $event_data);
+    }
 }
 
 function update_invoice_sequence(mysqli $mysqli, int $year, int $last_invoice_number): void
