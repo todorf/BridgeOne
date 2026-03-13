@@ -38,8 +38,8 @@ $reservations = generate_payload_hash($reservations);
 
 // Insert data into database
 $mysqli = db_connection();
-insert_data($mysqli, 'reservations', $reservations, true);
-insert_data($mysqli, 'rate_plans', $pricing_plans, true);
+upsert_data($mysqli, 'reservations', $reservations, true);
+upsert_data($mysqli, 'rate_plans', $pricing_plans, true);
 
 foreach ($reservations as $reservation) {
     if (empty($reservation['rooms'])) {
@@ -54,7 +54,7 @@ foreach ($reservations as $reservation) {
         ];
     }, $reservation['rooms']);
 
-    insert_data($mysqli, 'rooms', $rooms, true);
+    upsert_data($mysqli, 'rooms', $rooms, true);
 }
 
 insert_related_data($mysqli, $reservations);

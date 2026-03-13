@@ -36,7 +36,7 @@ function normalize_bind_value(mixed $value): mixed
 /**
  * @throws Exception
  */
-function insert_data(
+function upsert_data(
     mysqli $mysqli,
     string $table,
     array $data,
@@ -120,8 +120,8 @@ function insert_related_data(mysqli $mysqli, array $data): void
         }
     }
 
-    insert_data($mysqli, 'reservations_rooms', $rooms, true);
-    insert_data($mysqli, 'reservations_pricing_plans', $pricing_plans, true);
+    upsert_data($mysqli, 'reservations_rooms', $rooms, true);
+    upsert_data($mysqli, 'reservations_pricing_plans', $pricing_plans, true);
 }
 
 function check_if_exists(mysqli $mysqli, string $table, string $column, string $value): bool

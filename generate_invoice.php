@@ -31,7 +31,7 @@ $invoice_queue_data = [
     'payload' => $invoice_payload_json,
 ];
 
-insert_data($mysqli, 'invoice_queue', [$invoice_queue_data]);
+upsert_data($mysqli, 'invoice_queue', [$invoice_queue_data]);
 $payload = [
     'payload' => $invoice_payload_json,
 ];
@@ -74,7 +74,7 @@ $invoice_queue_data = [
     'status' => InvoiceStatus::FAILED->value,
 ];
 
-insert_data($mysqli, 'invoice_queue', [$invoice_queue_data], true);
+upsert_data($mysqli, 'invoice_queue', [$invoice_queue_data], true);
 
 $mysqli->close();
 

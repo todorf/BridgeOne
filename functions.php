@@ -291,7 +291,7 @@ function handle_event(mysqli $mysqli, WebhookOperations $event_type, array $even
                 return ['error' => 'Reservation already exists'];
             }
 
-            insert_data($mysqli, 'reservations', [$event_data]);
+            upsert_data($mysqli, 'reservations', [$event_data]);
             return ['success' => true];
         case WebhookOperations::RESERVATION_UPDATE:
             return reservation_update($mysqli, $event_data);
@@ -315,7 +315,7 @@ function reservation_update(mysqli $mysqli, array $event_data): array
         }
 
         // Update reservation
-        insert_data($mysqli, 'reservations', [$event_data], true);
+        upsert_data($mysqli, 'reservations', [$event_data], true);
     } catch (Throwable $e) {
         // We would also save this to log file
         return ['error' => $e->getMessage()];
@@ -337,7 +337,7 @@ function reservation_cancel(mysqli $mysqli, array $event_data): array
 
         // Update reservation status to canceled
         $event_data['status'] = 'canceled';
-        insert_data($mysqli, 'reservations', [$event_data], true);
+        upsert_data($mysqli, 'reservations', [$event_data], true);
 
         // If reservation is canceled, log the event
         if (isset($event_data['status']) && $event_data['status'] === 'canceled') {
