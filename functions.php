@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/enums/WebhookOperations.php';
+require_once __DIR__ . '/enums/EventType.php';
 
 /**
  * @throws Exception
@@ -275,4 +277,75 @@ function generate_invoice_payload(mysqli $mysqli, array $reservation): array
         'total_amount' => $reservation['total_price'],
         'currency' => $reservation['currency'],
     ];
+}
+
+function handle_event(mysqli $mysqli, WebhookOperations $event_type, array $event_data): array
+{
+    switch ($event_type) {
+        case WebhookOperations::RESERVATION_INSERT:
+            if (!isset($event_data['id_reservations'])) {
+                return ['error' => 'Reservation ID is required'];
+            }
+
+            if (check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
+                return ['error' => 'Reservation already exists'];
+            }
+
+            insert_data($mysqli, 'reservations', [$event_data]);
+            return ['success' => true];
+        case WebhookOperations::RESERVATION_UPDATE:
+            return reservation_update($mysqli, $event_data);
+        case WebhookOperations::RESERVATION_CANCEL:
+            return reservation_cancel($mysqli, $event_data);
+        default:
+            return ['error' => 'Invalid event type: ' . $event_type];
+    }
+}
+
+function reservation_update(mysqli $mysqli, array $event_data): array
+{
+    try {
+        if (!isset($event_data['id_reservations'])) {
+            return ['error' => 'Reservation ID is required'];
+        }
+
+        // If reservation is canceled, log the event
+        if (isset($event_data['status']) && $event_data['status'] === 'canceled') {
+            log_event($mysqli, EventType::CANCEL, ['reservation_id' => $event_data['id_reservations']]);
+        }
+
+        // Update reservation
+        insert_data($mysqli, 'reservations', [$event_data], true);
+    } catch (Throwable $e) {
+        // We would also save this to log file
+        return ['error' => $e->getMessage()];
+    }
+
+    return ['success' => true];
+}
+
+function reservation_cancel(mysqli $mysqli, array $event_data): array
+{
+    try {
+        if (!isset($event_data['id_reservations'])) {
+            return ['error' => 'Reservation ID is required'];
+        }
+
+        if (!check_if_exists($mysqli, 'reservations', 'id_reservations', $event_data['id_reservations'])) {
+            return ['error' => 'Reservation not found'];
+        }
+
+        // Update reservation status to canceled
+        $event_data['status'] = 'canceled';
+        insert_data($mysqli, 'reservations', [$event_data], true);
+
+        // If reservation is canceled, log the event
+        if (isset($event_data['status']) && $event_data['status'] === 'canceled') {
+            log_event($mysqli, EventType::CANCEL, ['reservation_id' => $event_data['id_reservations']]);
+        }
+    } catch (Throwable $e) {
+        return ['error' => $e->getMessage()];
+    }
+
+    return ['success' => true];
 }

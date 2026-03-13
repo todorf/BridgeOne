@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/enums/EventType.php';
+require_once __DIR__ . '/enums/WebhookOperations.php';
 
 /**
  * Validates identifier (table/column name) to prevent SQL injection.
@@ -11,6 +13,9 @@ function validate_identifier(string $name): void
     }
 }
 
+/**
+ * @throws JsonException
+ */
 function normalize_bind_value(mixed $value): mixed
 {
     if ($value === '' || $value === null) {
@@ -22,15 +27,6 @@ function normalize_bind_value(mixed $value): mixed
             return json_encode($value, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new JsonException("Error encoding JSON: " . $e->getMessage());
-        }
-    }
-
-    if (is_string($value)) {
-        try {
-            $dt = new DateTime($value);
-            return $dt->format('Y-m-d H:i:s');
-        } catch (Exception $e) {
-            // Not a valid date string, fall through
         }
     }
 
@@ -158,20 +154,25 @@ function get_rows_by_column(
 
 function log_event(
     mysqli $mysqli,
-    EventType $event_type,
+    EventType|WebhookOperations $event_type,
     array $event_data,
     array $old_data = [],
     array $new_data = []
 ): void {
-    $sql = "INSERT INTO audit_log (event_type, event_data, old_data, new_data) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO audit_log (event_type, event_data, old_data, new_data, payload_hash) VALUES (?, ?, ?, ?, ?)";
 
     $event_type_value = $event_type->value;
-    $event_data_json = json_encode($event_data);
-    $old_data_json = json_encode($old_data);
-    $new_data_json = json_encode($new_data);
+    $event_data_json = !empty($event_data) ? json_encode($event_data, JSON_THROW_ON_ERROR) : null;
+    $old_data_json = !empty($old_data) ? json_encode($old_data, JSON_THROW_ON_ERROR) : null;
+    $new_data_json = !empty($new_data) ? json_encode($new_data, JSON_THROW_ON_ERROR) : null;
+    $payload_hash = !empty($event_data_json) ? hash('sha256', $event_data_json) : null;
+
+    if (check_if_exists($mysqli, 'audit_log', 'payload_hash', $payload_hash)) {
+        return;
+    }
 
     $stmt = $mysqli->prepare($sql);
-    $stmt->bind_param('ssss', $event_type_value, $event_data_json, $old_data_json, $new_data_json);
+    $stmt->bind_param('sssss', $event_type_value, $event_data_json, $old_data_json, $new_data_json, $payload_hash);
     $stmt->execute();
 
     $stmt->close();
