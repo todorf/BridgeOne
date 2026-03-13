@@ -1,11 +1,12 @@
 <?php
+require_once __DIR__ . '/database.php';
 
 /**
  * @throws Exception
  * @throws JsonException
  * @return array
  */
-function sync_rooms(string $base_url, string $token, string $api_key, array $curlConifg): array
+function sync_rooms(string $base_url, string $token, string $api_key, array $curlConfig): array
 {
     $endpoint = '/api/room/data/available_rooms';
     $data = [
@@ -18,7 +19,7 @@ function sync_rooms(string $base_url, string $token, string $api_key, array $cur
         "id_pricing_plans" => 370
     ];
 
-    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
+    return curl_post_request($base_url, $api_key, $token, $endpoint, $data, $curlConfig);
 }
 
 /**
@@ -26,7 +27,7 @@ function sync_rooms(string $base_url, string $token, string $api_key, array $cur
  * @throws JsonException
  * @return array
  */
-function sync_rate_plans(string $base_url, string $token, string $api_key, array $curlConifg): array
+function sync_rate_plans(string $base_url, string $token, string $api_key, array $curlConfig): array
 {
     $endpoint = '/api/pricingPlan/data/pricing_plans';
     $data = [
@@ -35,7 +36,7 @@ function sync_rate_plans(string $base_url, string $token, string $api_key, array
         "key" => $api_key,
     ];
 
-    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);;
+    return curl_post_request($base_url, $api_key, $token, $endpoint, $data, $curlConfig);
 }
 
 /**
@@ -47,7 +48,7 @@ function sync_reservations(
     string $base_url,
     string $token,
     string $api_key,
-    array $curlConifg,
+    array $curlConfig,
     string $fromDate,
     string $toDate,
 ): array {
@@ -65,7 +66,7 @@ function sync_reservations(
         'show_rooms' => 1,
     ];
 
-    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
+    return curl_post_request($base_url, $api_key, $token, $endpoint, $data, $curlConfig);
 }
 
 /**
@@ -77,7 +78,7 @@ function fetch_reservation(
     string $base_url,
     string $token,
     string $api_key,
-    array $curlConifg,
+    array $curlConfig,
     string $reservation_id,
 ): array {
     $endpoint = '/api/reservation/data/reservation';
@@ -88,7 +89,7 @@ function fetch_reservation(
         "id_reservations" => $reservation_id,
     ];
 
-    return curl_post_request($base_url, $endpoint, $token, $data, $curlConifg);
+    return curl_post_request($base_url, $api_key, $token, $endpoint, $data, $curlConfig);
 }
 
 /**
@@ -98,19 +99,21 @@ function fetch_reservation(
  */
 function curl_post_request(
     string $base_url,
-    string $endpoint,
+    string $api_key,
     string $token,
+    string $endpoint,
     array $postData,
-    array $curlConifg,
+    array $curlConfig,
 ): array {
     $ch = curl_init();
 
     curl_setopt($ch, CURLOPT_URL, $base_url . $endpoint);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData, JSON_THROW_ON_ERROR));
-    curl_setopt_array($ch, $curlConifg + [
+    curl_setopt_array($ch, $curlConfig + [
         CURLOPT_HTTPHEADER => [
             'Authorization: Bearer ' . $token,
+            'X-API-KEY: ' . $api_key,
             "Content-Type: application/json"
         ]
     ]);
@@ -118,19 +121,33 @@ function curl_post_request(
     $response = curl_exec($ch);
 
     if (curl_errno($ch)) {
-        throw new Exception('Error:' . curl_error($ch));
-        exit;
+        $errorMsg = curl_error($ch);
+        curl_close($ch);
+        return [
+            'success' => false,
+            'response' => null,
+            'error' => $errorMsg,
+        ];
     }
 
-    try{
+    try {
         $data = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
     } catch (JsonException $e) {
-        throw new JsonException('Error:' . $e->getMessage());
+        curl_close($ch);
+        return [
+            'success' => false,
+            'response' => null,
+            'error' => 'JSON decode error: ' . $e->getMessage(),
+        ];
     }
 
     curl_close($ch);
 
-    return $data;
+    return [
+        'success' => true,
+        'response' => $data,
+        'error' => null,
+    ];
 }
 
 function generate_slugs(
@@ -217,4 +234,45 @@ function is_reservation_modified(array $reservation, array $reservation_db): boo
         $reservation['id_reservations'] === $reservation_db['id_reservations'] &&
         $reservation['payload_hash'] !== $reservation_db['payload_hash']
     );
+}
+
+/**
+ * @throws Exception
+ * @return array
+ */
+function generate_invoice_payload(mysqli $mysqli, array $reservation): array
+{
+    $year = date('Y');
+    $invoice_sequence = get_rows_by_column($mysqli, 'invoice_sequence', 'year', $year, 'last_invoice_number');
+    if (empty($invoice_sequence)) {
+        throw new Exception("Invoice sequence not found for year: " . $year);
+    }
+
+    $invoice_sequence_number = $invoice_sequence[0]['last_invoice_number'] + 1;
+    update_invoice_sequence($mysqli, $year, $invoice_sequence_number);
+
+    $invoice_number = 'HS-INV-' . $year . '-' . str_pad($invoice_sequence_number, 6, '0', STR_PAD_LEFT);
+    $line_items = [
+        'custom_price' => $reservation['custom_price'],
+        'total_price' => $reservation['total_price'],
+        'rooms_price' => $reservation['rooms_price'],
+        'extras_price' => $reservation['extras_price'],
+        'city_tax_price' => $reservation['city_tax_price'],
+        'insurance_price' => $reservation['insurance_price'],
+        'board_price' => $reservation['board_price'],
+        'conference_halls_price' => $reservation['conference_halls_price'],
+        'spas_price' => $reservation['spas_price'],
+        'custom_tax_price' => $reservation['custom_tax_price'],
+    ];
+
+    return [
+        'invoice_number' => $invoice_number,
+        'reservation_id' => $reservation['id_reservations'],
+        'guest_name' => $reservation['first_name'] . ' ' . $reservation['last_name'],
+        'arrival_date' => $reservation['date_arrival'],
+        'departure_date' => $reservation['date_departure'],
+        'line_items' => json_encode($line_items, JSON_THROW_ON_ERROR),
+        'total_amount' => $reservation['total_price'],
+        'currency' => $reservation['currency'],
+    ];
 }

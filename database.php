@@ -140,9 +140,14 @@ function check_if_exists(mysqli $mysqli, string $table, string $column, string $
     return $result->fetch_row()[0] > 0;
 }
 
-function fetch_rows_by_column (mysqli $mysqli, string $table, string $column, string $value): array
-{
-    $sql = "SELECT * FROM `$table` WHERE `$column` = ?";
+function get_rows_by_column(
+    mysqli $mysqli,
+    string $table,
+    string $column,
+    string $value,
+    string $row = '*'
+): array {
+    $sql = "SELECT $row FROM `$table` WHERE `$column` = ?";
 
     $stmt = $mysqli->prepare($sql);
     $stmt->bind_param('s', $value);
@@ -170,4 +175,22 @@ function log_event(
     $stmt->execute();
 
     $stmt->close();
+}
+
+function update_invoice_sequence(mysqli $mysqli, int $year, int $last_invoice_number): void
+{
+    $mysqli->begin_transaction();
+
+    // Lock the row for update
+    $stmt = $mysqli->prepare("SELECT `last_invoice_number` FROM `invoice_sequence` WHERE `year` = ? FOR UPDATE");
+    $stmt->bind_param('i', $year);
+    $stmt->execute();
+    $stmt->close();
+
+    // Update invoice_sequence
+    $update = $mysqli->prepare("UPDATE `invoice_sequence` SET `last_invoice_number` = ? WHERE `year` = ?");
+    $update->bind_param('ii', $last_invoice_number, $year);
+    $update->execute();
+
+    $mysqli->commit();
 }
