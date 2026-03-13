@@ -2,6 +2,7 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/enums/WebhookOperations.php';
 require_once __DIR__ . '/enums/EventType.php';
+require_once __DIR__ . '/logger.php';
 
 /**
  * @throws Exception
@@ -213,7 +214,7 @@ function generate_payload_hashes(array $data): array
         }
 
         try {
-            $item['payload_hash'] = generate_single_payload_hash($item);
+            $item['payload_hash'] = generate_hash($item);
         } catch (JsonException $e) {
             throw new JsonException("Error encoding JSON: " . $e->getMessage());
         }
@@ -223,7 +224,7 @@ function generate_payload_hashes(array $data): array
     return $data;
 }
 
-function generate_single_payload_hash(array $data, string $hash_algo = 'sha256'): string
+function generate_hash(array $data, string $hash_algo = 'sha256'): string
 {
     return hash($hash_algo, json_encode($data, JSON_THROW_ON_ERROR));
 }

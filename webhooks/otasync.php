@@ -41,7 +41,7 @@ $event_type = WebhookOperations::from($event_type);
 $payload_to_hash = ['type' => $event_type->value, 'data' => $event_data];
 
 $mysqli = db_connection();
-log_event($mysqli, $event_type, $data, [], [], generate_single_payload_hash($payload_to_hash));
+log_event($mysqli, $event_type, $data, [], [], generate_hash($payload_to_hash));
 
 $result = handle_event($mysqli, $event_type, $event_data);
 if (isset($result['error'])) {
