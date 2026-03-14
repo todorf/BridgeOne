@@ -1,6 +1,7 @@
 # BridgeOne
 
 _- Requirements -_
+
 Composer
 PHP >= 8.1
 MySQL
@@ -8,6 +9,7 @@ MySQL
 _- Setup Guide -_
 
 Clone git repo:
+
 git clone https://github.com/todorf/BridgeOne.git
 
 In php.ini enable extenstion=mysqli if not enabled yet.
@@ -15,13 +17,17 @@ In php.ini enable extenstion=mysqli if not enabled yet.
 Inside the cloned repo run `composer install`
 
 Go to config/config.php and change the database settings and API parameters
+
 'api_base_url' => https://app.otasync.me/
+
 The API base URL must end with a trailing slash (/)
 
 Next run MySQL migration schemas\schema.sql to create required database and tables.
+
 mysql -u user_name < path_to_sql_file
 
 Each sync script has an $id_properties or $sync_data variable that can be modified to fetch data for different properties.
+
 All scripts must be run from the project root!
 
 - Task 1 \*
@@ -44,7 +50,9 @@ Start a local PHP web server with:
 - `php -S localhost:8000`
 
 Once the server is started you can send POST requests to http://localhost:8000/webhooks/otasync.php
+
 You can use cURL to send a request to the endpoint. The request body should include the keys type and data.
+
 Below are examples of cURL requests:
 
 curl -X POST http://localhost:8000/webhooks/otasync.php ^
