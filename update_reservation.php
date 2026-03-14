@@ -40,7 +40,7 @@ if (empty($reservation_db)) {
 }
 
 // Compare payload hash
-if (true) {
+if (is_reservation_modified($reservation, $reservation_db)) {
     // insert will update the reservation if it exists
     upsert_data($mysqli, 'reservations', [$reservation], true);
 

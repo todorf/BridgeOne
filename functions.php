@@ -355,10 +355,8 @@ function reservation_cancel(mysqli $mysqli, array $event_data): array
         $event_data['status'] = 'canceled';
         upsert_data($mysqli, 'reservations', [$event_data], true);
 
-        // If reservation is canceled, log the event
-        if (isset($event_data['status']) && $event_data['status'] === 'canceled') {
-            log_event($mysqli, EventType::CANCEL, ['reservation_id' => $event_data['id_reservations']]);
-        }
+        // Reservation cancelled, log the event
+        log_event($mysqli, EventType::CANCEL, ['reservation_id' => $event_data['id_reservations']]);
     } catch (Throwable $e) {
         return ['error' => $e->getMessage()];
     }
