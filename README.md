@@ -22,7 +22,7 @@ Go to **config/config.php** and change the database settings and API parameters.
 
 The API base URL must end with a trailing slash (/).
 
-Next, run the MySQL migration **schemas\schema.sql** to create the required database and tables.
+Next, start the MySQL server and run the migration script **schemas\schema.sql** to create the required database and tables.
 
     mysql -u user_name < path_to_sql_file
 
