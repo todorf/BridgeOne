@@ -92,17 +92,6 @@ function upsert_data(
     }
 
     $mysqli->autocommit(TRUE);
-
-    $config = require __DIR__ . '/config/config.php';
-    $log_file = $config['log_file'] ?? '';
-
-    if ($log_file !== "") {
-        $action = $onDuplicateKeyUpdate
-            ? DatabaseOperations::UPDATE
-            : DatabaseOperations::INSERT;
-
-        append_event_to_log($log_file, $action, $data, "Database operation: " . $action->value);
-    }
 }
 
 /**

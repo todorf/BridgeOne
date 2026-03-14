@@ -8,14 +8,22 @@ $base_url = $config['api_base_url'];
 $token = $config['api_token'];
 $api_key = $config['api_key'];
 
-$result = sync_rooms($base_url, $token, $api_key, $curlConfig);
+$sync_data = [
+    'id_properties' => 93,
+    'dfrom' => '2025-02-01',
+    'dto' => '2025-02-20',
+    "id_room_types" => 170,
+    "id_pricing_plans" => 370
+];
+
+$result = sync_rooms($base_url, $token, $api_key, $curlConfig, $sync_data);
 if (!$result['success']) {
     echo "Error syncing rooms: " . $result['error'] . "\n";
     exit(1);
 }
 $rooms = $result['response'];
 
-$result = sync_rate_plans($base_url, $token, $api_key, $curlConfig);
+$result = sync_rate_plans($base_url, $token, $api_key, $curlConfig, $sync_data['id_properties']);
 if (!$result['success']) {
     echo "Error syncing rate plans: " . $result['error'] . "\n";
     exit(1);

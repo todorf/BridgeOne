@@ -13,12 +13,14 @@ $api_key = $config['api_key'];
 $options = getopt("", ["reservation_id:"]);
 $reservation_id = $options['reservation_id'] ?? null;
 
+$id_properties = 93;
+
 if (!$reservation_id) {
     echo "Please provide a reservation ID --reservation_id=1234567890\n";
     exit(1);
 }
 
-$result = fetch_reservation($base_url, $token, $api_key, $curlConfig, $reservation_id);
+$result = fetch_reservation($base_url, $token, $api_key, $curlConfig, $reservation_id, $id_properties);
 if (!$result['success']) {
     echo "Error syncing reservations: " . $result['error'] . "\n";
     exit(1);

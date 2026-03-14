@@ -9,17 +9,22 @@ require_once __DIR__ . '/logger.php';
  * @throws JsonException
  * @return array
  */
-function sync_rooms(string $base_url, string $token, string $api_key, array $curlConfig): array
-{
+function sync_rooms(
+    string $base_url,
+    string $token,
+    string $api_key,
+    array $curlConfig,
+    array $sync_data
+): array {
     $endpoint = '/api/room/data/available_rooms';
     $data = [
         "token" => $token,
-        "id_properties" => "93",
+        "id_properties" => $sync_data['id_properties'] ?? null,
         "key" => $api_key,
-        "dfrom" => "2025-02-01",
-        "dto" => "2025-02-20",
-        "id_room_types" => 170,
-        "id_pricing_plans" => 370
+        "dfrom" => $sync_data['dfrom'] ?? null,
+        "dto" => $sync_data['dto'] ?? null,
+        "id_room_types" => $sync_data['id_room_types'] ?? null,
+        "id_pricing_plans" => $sync_data['id_pricing_plans'] ?? null
     ];
 
     return curl_post_request($base_url, $api_key, $token, $endpoint, $data, $curlConfig);
@@ -30,12 +35,18 @@ function sync_rooms(string $base_url, string $token, string $api_key, array $cur
  * @throws JsonException
  * @return array
  */
-function sync_rate_plans(string $base_url, string $token, string $api_key, array $curlConfig): array
+function sync_rate_plans(
+    string $base_url,
+    string $token,
+    string $api_key,
+    array $curlConfig,
+    int $id_properties
+): array
 {
     $endpoint = '/api/pricingPlan/data/pricing_plans';
     $data = [
         "token" => $token,
-        "id_properties" => "93",
+        "id_properties" => $id_properties,
         "key" => $api_key,
     ];
 
@@ -52,6 +63,7 @@ function sync_reservations(
     string $token,
     string $api_key,
     array $curlConfig,
+    int $id_properties,
     string $fromDate,
     string $toDate,
 ): array {
@@ -59,7 +71,7 @@ function sync_reservations(
     $data = [
         "token" => $token,
         "key" => $api_key,
-        "id_properties" => 93,
+        "id_properties" => $id_properties,
         "rooms" => [],
         'channels' => [],
         'countries' => [],
@@ -83,12 +95,13 @@ function fetch_reservation(
     string $api_key,
     array $curlConfig,
     string $reservation_id,
+    int $id_properties,
 ): array {
     $endpoint = '/api/reservation/data/reservation';
     $data = [
         "token" => $token,
         "key" => $api_key,
-        "id_properties" => 93,
+        "id_properties" => $id_properties,
         "id_reservations" => $reservation_id,
     ];
 

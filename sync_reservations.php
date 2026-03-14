@@ -12,19 +12,29 @@ $options = getopt("", ["from:", "to:"]);
 $fromDate = $options['from'] ?? null;
 $toDate = $options['to'] ?? null;
 
+$id_properties = 93;
+
 if (!$fromDate || !$toDate) {
     echo "Please provide start and end date in YYYY-MM-DD format --from=YYYY-MM-DD --to=YYYY-MM-DD\n";
     exit(1);
 }
 
-$result = sync_reservations($base_url, $token, $api_key, $curlConfig, $fromDate, $toDate);
+$result = sync_reservations(
+    $base_url,
+    $token,
+    $api_key,
+    $curlConfig,
+    $id_properties,
+    $fromDate,
+    $toDate,
+);
 if (!$result['success']) {
     echo "Error syncing reservations: " . $result['error'] . "\n";
     exit(1);
 }
 $reservations = $result['response'];
 
-$result = sync_rate_plans($base_url, $token, $api_key, $curlConfig);
+$result = sync_rate_plans($base_url, $token, $api_key, $curlConfig, $id_properties);
 if (!$result['success']) {
     echo "Error syncing rate plans: " . $result['error'] . "\n";
     exit(1);
